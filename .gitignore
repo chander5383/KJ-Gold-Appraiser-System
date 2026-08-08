@@ -1,0 +1,38 @@
+# ============================================================
+# KJ Gold Appraiser — Root .gitignore
+# ============================================================
+
+# ----- Dependencies -----------------------------------------
+node_modules/
+
+# ----- Environment / Secrets --------------------------------
+.env
+.env.*
+!.env.example
+
+# ----- Build outputs ----------------------------------------
+dist/
+build/
+coverage/
+
+# ----- Logs -------------------------------------------------
+*.log
+backend/logs/
+
+# ----- Development AI tools (never part of the application) -
+.claude/
+graphify-out/
+audit/
+
+# ----- Explicit per-service .env protection -----------------
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Local files / archives
+.token
+.user
+*.rar
+
+development.md
+docs/

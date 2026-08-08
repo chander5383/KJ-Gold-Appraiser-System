@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- maximum-scale / user-scalable=no removed: they block pinch-zoom and fail
+         WCAG 2.1 SC 1.4.4. viewport-fit=cover handles notched devices. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="KJ Gold Appraiser System - Professional Gold Appraisal Certificate Management" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="color-scheme" content="light dark" />
+    <title>KJ Gold Appraiser System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Version-pinned and deferred. Previously unpinned and render-blocking, which
+         made every icon in the app a hard runtime dependency on whatever unpkg
+         happened to serve that day. -->
+    <script defer src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+  </head>
+  <body class="font-inter">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

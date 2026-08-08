@@ -1,0 +1,372 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== BASE STYLES ===== */
+@layer base {
+  html {
+    /* Belt-and-braces against page-level horizontal scroll. The real fix is
+       min-w-0 on the flex <main> in App.jsx; this stops any future regression
+       from silently reaching the user. */
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800 font-inter min-h-screen antialiased;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .dark body,
+  body.dark {
+    @apply bg-gray-950 text-gray-100;
+  }
+
+  /* Media never overflows its container or distorts. */
+  img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Long unbroken strings (account numbers, URLs, emails) wrap instead of
+     forcing their container wider than the viewport. */
+  h1, h2, h3, h4, p, span, td, th, label, a {
+    overflow-wrap: break-word;
+  }
+
+  /* Visible keyboard focus everywhere. Buttons previously had no focus
+     indicator at all, making the app unusable without a mouse. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+    --tw-ring-offset-color: theme('colors.slate.50');
+  }
+
+  .dark :focus-visible {
+    --tw-ring-offset-color: theme('colors.gray.950');
+  }
+
+  /* Native controls follow the active theme (date pickers, selects). */
+  :root { color-scheme: light; }
+  .dark { color-scheme: dark; }
+}
+
+/* ===== REDUCED MOTION ===== */
+/* The app ships 8 keyframe animations plus transitions on nearly every
+   interactive element. Honour the OS-level preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== GLASSMORPHISM COMPONENTS ===== */
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl rounded-2xl;
+    transition: all 0.3s ease;
+  }
+
+  .dark .glass-card {
+    @apply bg-gray-900/80 border-gray-700/30;
+  }
+
+  .glass-card-hover:hover {
+    /* Was `@apply scale-[1.02]` followed by `transform: translateY(-2px)`,
+       where the second declaration silently discarded the scale. Combined. */
+    @apply shadow-2xl;
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  .glass-sidebar {
+    @apply bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white;
+  }
+
+  .glass-input {
+    @apply w-full px-4 py-3 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-slate-200 dark:border-gray-700 rounded-xl outline-none transition-all duration-300;
+    @apply focus:bg-white dark:focus:bg-gray-800 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-800;
+  }
+
+  .glass-btn {
+    @apply px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-2;
+    @apply active:scale-95;
+    /* Comfortable touch target without changing the visual height on desktop. */
+    @apply min-h-[44px] sm:min-h-0 sm:py-2.5;
+  }
+
+  .glass-btn-primary {
+    @apply glass-btn bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/25;
+    @apply hover:from-primary-700 hover:to-primary-800 hover:shadow-xl hover:shadow-primary-500/30;
+  }
+
+  .glass-btn-secondary {
+    @apply glass-btn bg-white/80 dark:bg-gray-800/80 text-slate-700 dark:text-gray-200 border border-slate-200 dark:border-gray-700;
+    @apply hover:bg-white dark:hover:bg-gray-700 hover:border-slate-300;
+  }
+
+  .glass-btn-danger {
+    @apply glass-btn bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25;
+    @apply hover:from-red-600 hover:to-red-700;
+  }
+
+  .glass-btn-success {
+    @apply glass-btn bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25;
+    @apply hover:from-emerald-600 hover:to-emerald-700;
+  }
+
+  /* Icon-only controls: keeps the 44px touch target on coarse pointers without
+     inflating the button visually on desktop. */
+  .icon-btn {
+    @apply inline-flex items-center justify-center rounded-lg transition-colors;
+    @apply w-11 h-11 sm:w-9 sm:h-9;
+  }
+
+  /* Table that becomes a stacked card list on small screens.
+     Used by History and Admin so neither needs horizontal scrolling on mobile. */
+  .table-sticky-head thead th {
+    @apply sticky top-0 z-10 bg-slate-50 dark:bg-gray-800;
+  }
+}
+
+/* ===== CERTIFICATE PRINT STYLES =====
+   PAGE GEOMETRY (do not change one number without the other):
+
+     A4 portrait            210mm x 297mm
+     @page margin 5mm    -> printable box 200mm x 287mm
+     .cert-container      = 200mm wide, box-sizing: border-box
+
+   The frame used to be pinned at 210mm (the inline min/max-width on
+   #certificate-canvas), i.e. the full sheet width. With a 5mm page margin that
+   overhangs the printable box by 5mm per side, and since the outer border is
+   only 4px (~1.06mm) it fell entirely inside the sliced-off strip — which is
+   why the left/right border disappeared in Print, Save as PDF and Download PDF.
+
+   Horizontal padding drops 8mm -> 3mm to absorb the 10mm the frame moved
+   inward, so the INNER content box keeps exactly the width it had before
+   (210mm - 16mm - 8px  ==  200mm - 6mm - 8px  ==  725.23px). Certificate
+   layout, tables and fonts are therefore byte-identical; only the outer frame
+   moved off the paper edge. Vertical geometry is untouched. */
+@media print {
+  @page {
+    size: A4 portrait;
+    /* Safe margin — keeps the 4px outer border inside the imageable area of
+       physical printers. MUST stay in sync with PDF_OPTIONS.margin in
+       backend/src/services/pdf.service.js or the PDF and Chrome's Print
+       Preview will disagree. */
+    margin: 5mm;
+  }
+
+  /* No ancestor of the certificate may establish a clipping box, or it clips
+     the outer border. `html` carries overflow-x: hidden from the base layer
+     and the canvas viewport is overflow-x: auto on screen. */
+  html,
+  body {
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  .cert-viewport,
+  .cert-zoom {
+    overflow: visible !important;
+  }
+
+  .no-print { display: none !important; }
+  .print-shadow-none { box-shadow: none !important; }
+
+  .cert-container {
+    /* border-box: the 200mm INCLUDES the 4px border, so the frame lands exactly
+       on the edge of the printable box instead of 4px past it. */
+    box-sizing: border-box !important;
+    /* !important is required: it must beat the inline min/max-width: 210mm. */
+    width: 200mm !important;      /* 210mm sheet - 2 x 5mm page margin */
+    min-width: 0 !important;
+    max-width: 100% !important;   /* never exceed the printable box, even if the
+                                     user overrides margins in the print dialog */
+    border: 4px solid #000 !important;
+    padding: 5mm 3mm !important;  /* was 8mm; see geometry note above */
+    margin: 0 auto !important;
+    height: max-content !important;
+    min-height: 150mm !important;
+    position: relative;
+    /* Clips the watermark to the padding box. An element's own border is never
+       affected by its own overflow — the clipping came from the ancestors
+       handled above — so this stays to keep the watermark inside the frame. */
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+    page-break-inside: avoid;
+  }
+
+  /* Requirement: no CSS transform may affect print output. The fit-to-width
+     zoom and the page-enter animation are screen-only affordances. */
+  .page-enter,
+  .cert-zoom,
+  .cert-container,
+  .cert-container * {
+    transform: none !important;
+    animation: none !important;
+  }
+
+  input { border: none !important; background: transparent !important; }
+  .border-b-input { border-bottom: 1px solid black !important; }
+  select { appearance: none; -webkit-appearance: none; border: none !important; background: transparent !important; }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="date"]::-webkit-inner-spin-button,
+  input[type="date"]::-webkit-clear-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+    opacity: 0 !important;
+  }
+
+  .print-only-clone {
+    display: flex !important;
+    page-break-before: always !important;
+    margin-top: 0 !important;
+  }
+}
+
+/* ===== PDF MODE =====
+   Used by CertificatePrintPage, the route Playwright renders for Download PDF.
+   page.pdf() emulates print media, so the @media print rules above apply here
+   too — these declarations come LATER in the file and are !important, so they
+   would win any disagreement. They must therefore mirror the print geometry
+   exactly, or Download PDF and Chrome Print Preview drift apart. */
+.pdf-mode {
+  background-color: white !important;
+  box-sizing: border-box !important;
+  width: 200mm !important;      /* 210mm sheet - 2 x 5mm page margin */
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding: 5mm 3mm !important;  /* matches .cert-container in @media print */
+  border: 4px solid #000 !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.pdf-mode .no-print { display: none !important; }
+.pdf-mode .print-shadow-none { box-shadow: none !important; }
+.pdf-mode input { border: none !important; background: transparent !important; }
+.pdf-mode select { appearance: none; -webkit-appearance: none; border: none !important; background: transparent !important; color: black !important; }
+.pdf-mode input[type="date"]::-webkit-calendar-picker-indicator { display: none !important; }
+
+@media screen {
+  .print-only-clone { display: none !important; }
+}
+
+/* ===== CERTIFICATE FIT-TO-WIDTH (SCREEN ONLY) =====
+   On screen the canvas is a full 210mm A4 sheet and must not be made fluid.
+   (Print and the Playwright PDF renderer override this to 200mm — the printable
+   box — see the page-geometry note above.) Instead, on small screens we
+   optionally scale the whole canvas down visually so the full document is
+   readable without horizontal scrolling.
+
+   --cert-scale is set inline by CertificatePage. transform is purely visual and
+   is forced to none in both @media print and .pdf-mode, so print/PDF output is
+   untouched. The wrapper's height is corrected so the scaled canvas doesn't
+   leave a gap. */
+.cert-zoom {
+  transform: scale(var(--cert-scale, 1));
+  transform-origin: top left;
+  width: calc(100% / var(--cert-scale, 1));
+}
+
+/* Never scale for print or for the PDF render target. */
+@media print {
+  .cert-zoom {
+    transform: none !important;
+    width: auto !important;
+  }
+}
+
+/* width: auto is scoped to the zoom WRAPPER only. It must not be allowed to
+   reach an element that also carries .pdf-mode, because .pdf-mode owns the
+   200mm frame width and this is the last width declaration in the file. */
+.pdf-mode .cert-zoom {
+  transform: none !important;
+  width: auto !important;
+}
+
+.cert-zoom.pdf-mode {
+  transform: none !important;
+}
+
+/* ===== NUMBER INPUT SPINNER REMOVAL ===== */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+input[type="number"] {
+  -moz-appearance: textfield !important;
+}
+
+/* ===== CERTIFICATE FORM STYLES (EXACT from original) ===== */
+.editable-input {
+  transition: all 0.2s;
+  border-bottom: 1px dashed transparent;
+}
+
+.editable-input:hover,
+.editable-input:focus {
+  background-color: #f8fafc;
+  border-bottom: 1px dashed #94a3b8;
+  outline: none;
+}
+
+select.editable-input {
+  cursor: pointer;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+/* Firefox (WebKit pseudo-elements below don't apply there) */
+* {
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-gray-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-gray-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-gray-600;
+}
+
+/* ===== PAGE TRANSITIONS ===== */
+.page-enter {
+  animation: pageEnter 0.4s ease-out forwards;
+}
+
+@keyframes pageEnter {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== STAGGER ANIMATIONS ===== */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }

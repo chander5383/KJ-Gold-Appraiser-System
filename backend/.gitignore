@@ -1,0 +1,15 @@
+# ============================================================
+# KJ Gold Appraiser — Backend .gitignore
+# ============================================================
+
+# ----- Dependencies -----------------------------------------
+node_modules/
+
+# ----- Environment / Secrets --------------------------------
+.env
+.env.*
+!.env.example
+
+# ----- Logs (auto-created at runtime by Winston + PM2) ------
+logs/
+*.log

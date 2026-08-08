@@ -1,0 +1,30 @@
+# ---- Installed inside the image; never copy from host --------
+node_modules
+
+# ---- Secrets — injected via Render Environment at runtime ----
+# Never bake .env into the image.
+.env
+*.env
+
+# ---- Runtime-generated files (created at container start) ----
+logs
+*.log
+npm-debug.log*
+
+# ---- Test / coverage output ----------------------------------
+coverage
+.nyc_output
+
+# ---- Development-only tooling (not used by npm start) --------
+ecosystem.config.js
+gen-token.cjs
+
+# ---- Version control and editor artifacts --------------------
+.git
+.gitignore
+.npmrc
+
+# ---- Documentation and meta files (not needed in the image) --
+*.md
+Dockerfile
+.dockerignore

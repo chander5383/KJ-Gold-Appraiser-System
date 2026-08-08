@@ -27,9 +27,15 @@ COPY package*.json ./
 # script not to re-download Chromium — it is already installed in this
 # image at $PLAYWRIGHT_BROWSERS_PATH (set by the base image).
 #
-# --omit=dev excludes nodemon and pm2; production only needs the
-# runtime dependencies listed under "dependencies" in package.json.
-RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --omit=dev
+# npm install is used instead of npm ci because package.json and
+# package-lock.json are out of sync (pm2 is declared in package.json
+# devDependencies but absent from the lock file root entry). npm ci
+# exits with code 1 on any such divergence. npm install re-resolves
+# and succeeds.
+#
+# --omit=dev excludes nodemon and pm2; only production dependencies
+# listed under "dependencies" in package.json are installed.
+RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --omit=dev
 
 # ---- Application source ---------------------------------------
 COPY src/ ./src/

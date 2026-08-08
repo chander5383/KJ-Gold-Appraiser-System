@@ -23,9 +23,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   // Holds the auto-logout timer so it can be cancelled on re-login or unmount.
   const expiryTimer = useRef(null);
+  const logoutCalled = useRef(false);
 
   // ── Core logout: clears timer, storage, and React state ─────────────────────
+  // Idempotent — safe to call multiple times.
   const logout = () => {
+    if (logoutCalled.current) return;
+    logoutCalled.current = true;
+
     if (expiryTimer.current) {
       clearTimeout(expiryTimer.current);
       expiryTimer.current = null;
@@ -48,6 +53,22 @@ export function AuthProvider({ children }) {
     const delay = exp - Date.now();
     if (delay <= 0) return; // already expired — caller must handle
     expiryTimer.current = setTimeout(logout, delay);
+  };
+
+  // ── Check expiry when tab becomes visible or gains focus ────────────────────
+  // Browser throttles setTimeout in background tabs. This catches expired
+  // sessions when user returns to the tab.
+  const checkExpiry = () => {
+    if (logoutCalled.current) return; // already logged out
+    const savedToken = localStorage.getItem('kj_token');
+    if (!savedToken) return;
+    const exp = jwtExp(savedToken);
+    if (!exp || Date.now() >= exp) {
+      logout();
+    } else {
+      // Session still valid — reschedule the timer in case it drifted.
+      scheduleExpiry(savedToken);
+    }
   };
 
   useEffect(() => {
@@ -74,19 +95,32 @@ export function AuthProvider({ children }) {
     setLoading(false);
 
     // ── Listen for auth errors dispatched by the Axios interceptor ────────────
-    // client.js fires 'kj-auth-expired' on every 401/403 response so that
+    // client.js fires 'kj-auth-expired' on every 401 response so that
     // the logout happens through React state — no hard page reload needed.
     // ProtectedRoute sees isAuthenticated → false and navigates to /login.
     const handleAuthExpired = () => logout();
     window.addEventListener('kj-auth-expired', handleAuthExpired);
+
+    // ── Check expiry when tab becomes visible or window gains focus ───────────
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') checkExpiry();
+    };
+    const handleFocus = () => checkExpiry();
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       window.removeEventListener('kj-auth-expired', handleAuthExpired);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
       if (expiryTimer.current) clearTimeout(expiryTimer.current);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Login: store credentials and arm the expiry timer ────────────────────────
   const login = async (username, password) => {
+    logoutCalled.current = false; // reset idempotency flag
     const response = await api.post('/auth/login', { username, password });
     const { token: newToken, user: userData } = response.data;
 

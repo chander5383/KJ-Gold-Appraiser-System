@@ -27,7 +27,8 @@ api.interceptors.request.use(
 // requests all receive a 401/403 at the same time.
 let sessionExpiredShown = false;
 
-// Response interceptor — handle 401 (expired/missing) and 403 (invalid token).
+// Response interceptor — handle 401 (authentication failure).
+// 403 = authorization/permission error, not session expiry — do NOT logout.
 // Auth endpoints (/auth/*) are excluded so a wrong-password 401 is not
 // misread as a session expiry.
 api.interceptors.response.use(
@@ -42,7 +43,7 @@ api.interceptors.response.use(
     const url     = error.config?.url ?? '';
     const isAuthEndpoint = url.includes('/auth/');
 
-    if ((status === 401 || status === 403) && !isAuthEndpoint) {
+    if (status === 401 && !isAuthEndpoint) {
       // Clear stored credentials immediately so any parallel requests that
       // resolve after this one don't find stale auth data.
       localStorage.removeItem('kj_token');
